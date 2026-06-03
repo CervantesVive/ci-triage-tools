@@ -1,0 +1,23 @@
+[project]
+name = "ci-triage-tools"
+version = "0.1.0"
+description = "PR-centric CI failure triage — unit tests and e2e"
+requires-python = ">=3.11"
+dependencies = [
+    "tools-shared",
+    "typer>=0.12.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+ci-triage = "ci_triage_tools.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ci_triage_tools"]
+
+[tool.uv.sources]
+tools-shared = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
