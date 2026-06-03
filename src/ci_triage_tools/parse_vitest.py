@@ -7,7 +7,8 @@ from ci_triage_tools.schema import Failure
 def parse_blob(path: Path) -> list[Failure]:
     data = json.loads(path.read_text(encoding="utf-8"))
     failures: list[Failure] = []
-    for file_entry in data.get("files", []):
+    file_entries = data if isinstance(data, list) else data.get("files", [])
+    for file_entry in file_entries:
         file_path: str | None = file_entry.get("name") or file_entry.get("filepath")
         _walk(file_entry.get("tasks", []), [], file_path, failures)
     return failures

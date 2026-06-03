@@ -146,6 +146,34 @@ def test_nested_suite_name(tmp_path: Path):
     assert failures[0].test_name == "Outer > Inner > deep test"
 
 
+def test_bare_list_format(tmp_path: Path):
+    # Real Vitest blob reporter output is a bare list, not {"files": [...]}
+    data = [
+        {
+            "name": "src/components/Button.test.tsx",
+            "type": "suite",
+            "tasks": [
+                {
+                    "type": "test",
+                    "name": "renders correctly",
+                    "result": {
+                        "state": "fail",
+                        "errors": [{"message": "expected true", "stack": "at Button.test.tsx:5"}],
+                    },
+                }
+            ],
+        }
+    ]
+    blob = tmp_path / "blob.json"
+    blob.write_text(json.dumps(data))
+
+    failures = parse_blob(blob)
+
+    assert len(failures) == 1
+    assert failures[0].test_name == "renders correctly"
+    assert failures[0].file == "src/components/Button.test.tsx"
+
+
 def test_tolerates_missing_errors(tmp_path: Path):
     data = {
         "version": 2,
