@@ -64,7 +64,7 @@ def download_run_artifacts(owner: str, repo: str, run_id: str) -> Path:
     dest.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         ["gh", "run", "download", run_id, "--repo", f"{owner}/{repo}", "--dir", str(dest)],
-        check=True,
+        check=False,  # exits non-zero when run has no artifacts; log fallback handles that
         capture_output=True,
     )
     return dest
