@@ -20,13 +20,15 @@ def analyze(
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Download CI artifacts for a PR and show failure summary."""
-    from ci_triage_tools.github import parse_pr_url, get_head_sha, get_failing_runs
+    from ci_triage_tools.github import parse_pr_url, get_head_sha, get_failing_runs, fetch_run_log
     from ci_triage_tools.artifacts import (
         load_cached_failures, save_failures, clear_run_cache,
         download_run_artifacts, detect_artifact_type,
+        load_cached_log, save_log,
     )
     from ci_triage_tools.parse_vitest import parse_blob as vitest_parse
     from ci_triage_tools.parse_playwright import parse_blob as pw_parse_blob, parse_html as pw_parse_html
+    from ci_triage_tools.sanitize_log import sanitize
     from ci_triage_tools.schema import WorkflowResult, TriageReport
     from ci_triage_tools.render import render_terminal, render_markdown
 
@@ -67,11 +69,21 @@ def analyze(
                     log_warning(f"Skipping unknown artifact: {artifact_dir.name}")
             save_failures(run_info.run_id, failures)
 
+        log_fallback: str | None = None
+        if not failures:
+            log_fallback = load_cached_log(run_info.run_id)
+            if log_fallback is None:
+                raw_log = fetch_run_log(run_info.run_id)
+                if raw_log:
+                    log_fallback = sanitize(raw_log)
+                    save_log(run_info.run_id, log_fallback)
+
         report.workflows.append(WorkflowResult(
             workflow_name=run_info.workflow_name,
             run_id=run_info.run_id,
             run_url=run_info.run_url,
             failures=failures,
+            log_fallback=log_fallback,
         ))
 
     render_terminal(report)

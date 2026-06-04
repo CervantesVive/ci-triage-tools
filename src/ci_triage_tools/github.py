@@ -33,6 +33,16 @@ def get_head_sha(owner: str, repo: str, pr_number: int) -> str:
     return data["head"]["sha"]
 
 
+def fetch_run_log(run_id: str) -> str:
+    """Return the combined stdout of all failing steps for a run."""
+    result = subprocess.run(
+        ["gh", "run", "view", run_id, "--log-failed"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout
+
+
 def get_failing_runs(owner: str, repo: str, sha: str) -> list[RunInfo]:
     data = _gh([
         "api",

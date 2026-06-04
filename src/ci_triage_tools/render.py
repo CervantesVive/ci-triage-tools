@@ -17,7 +17,12 @@ def render_terminal(report: TriageReport) -> None:
         print(f"  {wf.run_url}")
         print(_BAR)
         if not wf.failures:
-            print("  (no structured failures parsed)")
+            if wf.log_fallback:
+                print("  (no structured test failures — sanitized job log:)\n")
+                for line in wf.log_fallback.splitlines():
+                    print(f"  {line}")
+            else:
+                print("  (no structured failures parsed)")
             continue
         for failure in wf.failures:
             print(f"\n  ✗  {failure.file or '(unknown file)'}")
@@ -40,6 +45,13 @@ def render_markdown(report: TriageReport, output: Path) -> None:
         noun = "failure" if total == 1 else "failures"
         lines.append(f"\n## {wf.workflow_name} — {total} {noun}\n\n")
         lines.append(f"Run: {wf.run_url}\n")
+        if not wf.failures:
+            if wf.log_fallback:
+                lines.append("\n_(no structured test failures — sanitized job log)_\n\n")
+                lines.append(f"```\n{wf.log_fallback}\n```\n")
+            else:
+                lines.append("\n_(no structured failures parsed)_\n")
+            continue
         for failure in wf.failures:
             lines.append(f"\n### ✗ {failure.test_name}\n\n")
             lines.append(f"**File:** `{failure.file or 'unknown'}`  \n")

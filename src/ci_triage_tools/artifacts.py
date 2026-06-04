@@ -18,6 +18,10 @@ def _failures_path(run_id: str) -> Path:
     return _cache_dir(run_id) / "failures.json"
 
 
+def _log_path(run_id: str) -> Path:
+    return _cache_dir(run_id) / "log_sanitized.txt"
+
+
 def _artifacts_dir(run_id: str) -> Path:
     return _cache_dir(run_id) / "artifacts"
 
@@ -33,6 +37,17 @@ def save_failures(run_id: str, failures: list[Failure]) -> None:
     p = _failures_path(run_id)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps([asdict(f) for f in failures], indent=2))
+
+
+def load_cached_log(run_id: str) -> str | None:
+    p = _log_path(run_id)
+    return p.read_text(encoding="utf-8") if p.exists() else None
+
+
+def save_log(run_id: str, text: str) -> None:
+    p = _log_path(run_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
 
 
 def clear_run_cache(run_id: str) -> None:

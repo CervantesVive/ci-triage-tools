@@ -17,6 +17,7 @@ class WorkflowResult:
     run_id: str
     run_url: str
     failures: list[Failure] = field(default_factory=list)
+    log_fallback: str | None = None  # sanitized job log when no structured failures
 
 
 @dataclass
