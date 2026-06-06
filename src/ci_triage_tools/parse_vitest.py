@@ -10,7 +10,9 @@ from ci_triage_tools.schema import Failure
 
 
 def _r(data: list, val: object) -> object:
-    """Resolve one hop: digit-string → data[index], anything else → as-is."""
+    """Resolve one hop: int or digit-string → data[index], anything else → as-is."""
+    if isinstance(val, int):
+        return data[val]
     if isinstance(val, str) and val.isdigit():
         return data[int(val)]
     return val

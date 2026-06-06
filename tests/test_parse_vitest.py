@@ -151,3 +151,64 @@ def test_returns_empty_for_non_list_json(tmp_path: Path):
     blob.write_text(json.dumps({"not": "the right format"}))
 
     assert parse_blob(blob) == []
+
+
+def _make_blob_v4(
+    file_name: str = "src/Button.test.tsx",
+    test_full_name: str = "Button > renders correctly",
+    test_name: str = "renders correctly",
+    error_msg: str = "AssertionError: expected 'foo'",
+    stack: str = "AssertionError\n    at Button.test.tsx:5",
+) -> list:
+    """Vitest v4.x blob format: field values are integer indices (not digit-strings)."""
+    return [
+        "4.1.0",                              # 0
+        "pass",                               # 1
+        "fail",                               # 2
+        "test",                               # 3
+        "suite",                              # 4
+        "run",                                # 5
+        file_name,                            # 6 — file task name
+        test_full_name,                       # 7 — test fullName
+        test_name,                            # 8 — test name
+        error_msg,                            # 9
+        stack,                                # 10
+        {"message": 9, "stack": 10},          # 11 — error object (integer refs)
+        [11],                                 # 12 — errors list (integer refs)
+        {"state": 2, "errors": 12, "startTime": 0, "duration": 1},   # 13 fail result
+        {"state": 1, "startTime": 0, "duration": 100},               # 14 pass result
+        {                                     # 15 — file task
+            "id": "-1", "name": 6, "fullName": 6,
+            "type": 4, "mode": 5,
+            "filepath": 6, "result": 14, "file": 15,
+            "tasks": 16,
+        },
+        {                                     # 16 — failing test task (integer refs)
+            "id": "-2", "name": 8, "fullName": 7,
+            "type": 3, "mode": 5,
+            "result": 13, "file": 15,
+        },
+    ]
+
+
+def test_v4_integer_refs_extracts_failure(tmp_path: Path):
+    blob = tmp_path / "blob-v4.json"
+    blob.write_text(json.dumps(_make_blob_v4()))
+
+    failures = parse_blob(blob)
+
+    assert len(failures) == 1
+    f = failures[0]
+    assert f.test_name == "Button > renders correctly"
+    assert f.file == "src/Button.test.tsx"
+    assert "expected 'foo'" in f.error_message
+    assert f.source == "vitest"
+
+
+def test_v4_integer_refs_skips_passing(tmp_path: Path):
+    data = list(_make_blob_v4())
+    data[16] = {"id": "-2", "name": 8, "fullName": 7, "type": 3, "mode": 5, "result": 14, "file": 15}
+    blob = tmp_path / "blob-v4-pass.json"
+    blob.write_text(json.dumps(data))
+
+    assert parse_blob(blob) == []

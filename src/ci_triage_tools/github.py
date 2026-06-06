@@ -46,7 +46,7 @@ def fetch_run_log(run_id: str) -> str:
 def get_failing_runs(owner: str, repo: str, sha: str) -> list[RunInfo]:
     data = _gh([
         "api",
-        f"/repos/{owner}/{repo}/actions/runs?head_sha={sha}&event=pull_request&per_page=50",
+        f"/repos/{owner}/{repo}/actions/runs?head_sha={sha}&per_page=100",
     ])
     return [
         RunInfo(

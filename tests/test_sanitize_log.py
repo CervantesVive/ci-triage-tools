@@ -95,3 +95,83 @@ def test_strips_ansi_codes():
 
 def test_empty_input():
     assert sanitize("") == ""
+
+
+# gh run view --log-failed output format: <workflow>/<job>\t<step>\t<timestamp> <content>
+PREFIXED_LOG = (
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1778285Z ##[group]Run pnpm install\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1808318Z shell: /usr/bin/bash -e {0}\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1808594Z env:\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1809069Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1809438Z   NPM_TOKEN: ***\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:45.1816024Z ##[endgroup]\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:27:54.3863131Z ##[group]Run pnpm test:shard --reporter=blob\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:29:26.5270381Z  ELIFECYCLE  Command failed with exit code 1.\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:29:26.5490306Z ##[error]Process completed with exit code 1.\n"
+    "Run Unit Tests / unit-test-web-shard (2, 16)\tUNKNOWN STEP\t"
+    "2026-06-06T05:29:27.0000000Z Post job cleanup.\n"
+)
+
+
+def test_prefixed_format_drops_env_block():
+    result = sanitize(PREFIXED_LOG)
+    assert "PNPM_HOME" not in result
+    assert "NPM_TOKEN" not in result
+
+
+def test_prefixed_format_keeps_sentinel():
+    result = sanitize(PREFIXED_LOG)
+    assert "Run pnpm test:shard --reporter=blob" in result
+
+
+def test_prefixed_format_keeps_error_lines():
+    result = sanitize(PREFIXED_LOG)
+    assert "ELIFECYCLE" in result
+    assert "##[error]Process completed with exit code 1." in result
+
+
+def test_prefixed_format_discards_post_cleanup():
+    result = sanitize(PREFIXED_LOG)
+    assert "Post job cleanup." not in result
+
+
+# Combined multi-job log: shard job followed by merge-coverage job.
+# Verify that the second job's failure is not discarded by the first job's cleanup.
+MULTI_JOB_LOG = (
+    # === Shard job ===
+    "Shard / shard-2\tUNKNOWN STEP\t2026-06-06T05:27:54.0000000Z ##[group]Run pnpm test:shard\n"
+    "Shard / shard-2\tUNKNOWN STEP\t2026-06-06T05:29:26.0000000Z  ELIFECYCLE  Command failed with exit code 1.\n"
+    "Shard / shard-2\tUNKNOWN STEP\t2026-06-06T05:29:26.1000000Z ##[error]Process completed with exit code 1.\n"
+    "Shard / shard-2\tUNKNOWN STEP\t2026-06-06T05:29:27.0000000Z Post job cleanup.\n"
+    # === Merge-coverage job ===
+    "Merge / merge-cov\tUNKNOWN STEP\t2026-06-06T05:30:48.0000000Z ##[group]Runner Image Provisioner\n"
+    "Merge / merge-cov\tUNKNOWN STEP\t2026-06-06T05:30:48.1000000Z ##[group]Run pnpm vitest --run --merge-reports\n"
+    "Merge / merge-cov\tUNKNOWN STEP\t2026-06-06T05:32:02.0000000Z ReferenceError: window is not defined\n"
+    "Merge / merge-cov\tUNKNOWN STEP\t2026-06-06T05:32:02.1000000Z ##[error]Process completed with exit code 1.\n"
+    "Merge / merge-cov\tUNKNOWN STEP\t2026-06-06T05:32:03.0000000Z Post job cleanup.\n"
+)
+
+
+def test_multi_job_log_captures_both_jobs():
+    result = sanitize(MULTI_JOB_LOG)
+    assert "ELIFECYCLE" in result
+    assert "ReferenceError: window is not defined" in result
+
+
+def test_multi_job_log_discards_both_cleanups():
+    result = sanitize(MULTI_JOB_LOG)
+    assert "Post job cleanup." not in result
+
+
+def test_multi_job_log_discards_preamble_between_jobs():
+    result = sanitize(MULTI_JOB_LOG)
+    assert "Runner Image Provisioner" not in result

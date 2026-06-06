@@ -3,7 +3,9 @@ import re
 from pathlib import Path
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
-_TS_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z ")
+_TS_PREFIX_RE = re.compile(
+    r"^(?:[^\t]+\t[^\t]+\t)?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z "
+)
 
 # First line matching this → discard everything before it
 _SENTINEL_RE = re.compile(r"##\[group\]Run pnpm ")
@@ -47,19 +49,26 @@ def sanitize(text: str) -> str:
     lines = text.splitlines()
     lines = [_ANSI_RE.sub("", line) for line in lines]
 
-    sentinel_idx = next(
-        (i for i, l in enumerate(lines) if _SENTINEL_RE.search(l)),
-        None,
-    )
-    if sentinel_idx is not None:
-        lines = lines[sentinel_idx:]
+    # Collect all sentinel→cleanup segments from the (possibly multi-job) log.
+    # Each segment starts at a "Run pnpm …" group and ends just before cleanup.
+    # If no sentinel is found at all, process all lines as one fallback segment.
+    segments: list[list[str]] = []
+    seg_start: int | None = None
+    found_any_sentinel = False
 
-    cleanup_idx = next(
-        (i for i, l in enumerate(lines) if _CLEANUP_RE.search(l)),
-        None,
-    )
-    if cleanup_idx is not None:
-        lines = lines[:cleanup_idx]
+    for i, l in enumerate(lines):
+        if _SENTINEL_RE.search(l):
+            if seg_start is None:
+                seg_start = i
+                found_any_sentinel = True
+        elif seg_start is not None and _CLEANUP_RE.search(l):
+            segments.append(lines[seg_start:i])
+            seg_start = None
+
+    if seg_start is not None:
+        segments.append(lines[seg_start:])
+
+    lines = [l for seg in segments for l in seg] if found_any_sentinel else lines
 
     result: list[str] = []
     skip_indented = False
