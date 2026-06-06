@@ -65,9 +65,12 @@ def analyze(
                     for sub in artifact_dir.iterdir():
                         if sub.is_dir() and (sub / "index.html").exists():
                             failures.extend(pw_parse_html(sub))
+                elif kind == "skip":
+                    pass
                 else:
                     log_warning(f"Skipping unknown artifact: {artifact_dir.name}")
-            save_failures(run_info.run_id, failures)
+            if failures:
+                save_failures(run_info.run_id, failures)
 
         log_fallback: str | None = None
         if not failures:

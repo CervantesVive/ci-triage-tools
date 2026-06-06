@@ -70,11 +70,21 @@ def download_run_artifacts(owner: str, repo: str, run_id: str) -> Path:
     return dest
 
 
+_SKIP_PATTERNS = (
+    "coverage-*",
+    "*-coverage",
+    "matrix-artifacts",
+    "deploy-metrics-*",
+)
+
+
 def detect_artifact_type(artifact_dir_name: str) -> str | None:
-    """Return 'vitest', 'playwright', or None based on the artifact directory name."""
+    """Return 'vitest', 'playwright', 'skip' (known non-test), or None (unknown)."""
     if fnmatch.fnmatch(artifact_dir_name, "blob-report-*"):
         return "vitest"
     lower = artifact_dir_name.lower()
     if "playwright" in lower or "e2e-blob" in lower:
         return "playwright"
+    if any(fnmatch.fnmatch(artifact_dir_name, p) for p in _SKIP_PATTERNS):
+        return "skip"
     return None
