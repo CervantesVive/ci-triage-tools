@@ -9,3 +9,7 @@ build/
 .venv/
 .python-version
 uv.lock
+
+# local tool state
+.serena/
+.remember/

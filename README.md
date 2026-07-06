@@ -5,7 +5,7 @@ PR-centric CI failure triage. Given a GitHub PR URL, downloads all failing CI ar
 ## Install
 
 ```bash
-uv tool install ./packages/ci-triage
+uv tool install .
 ```
 
 Or within the workspace:
@@ -33,16 +33,16 @@ gh auth login
 
 ```bash
 # Analyze all failing runs for a PR
-ci-triage analyze https://github.com/octocat/Hello-World/pull/6537
+ci-triage analyze https://github.com/octocat/Hello-World/pull/1347
 
 # Also write a markdown file
-ci-triage analyze https://github.com/octocat/Hello-World/pull/6537 --output triage.md
+ci-triage analyze https://github.com/octocat/Hello-World/pull/1347 --output triage.md
 
 # Bust the artifact cache and re-download
-ci-triage analyze https://github.com/octocat/Hello-World/pull/6537 --refresh
+ci-triage analyze https://github.com/octocat/Hello-World/pull/1347 --refresh
 
 # Verbose output
-ci-triage analyze https://github.com/octocat/Hello-World/pull/6537 -v
+ci-triage analyze https://github.com/octocat/Hello-World/pull/1347 -v
 
 # Inspect a raw log file (strips CI noise, keeps errors + stack traces)
 ci-triage from-file /path/to/job.log
